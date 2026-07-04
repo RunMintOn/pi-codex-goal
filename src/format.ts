@@ -85,14 +85,17 @@ export function formatBudget(goal: ThreadGoal): string {
 }
 
 function statusLabel(status: GoalStatus): string {
-  return status === "budgetLimited" ? "limited by budget" : status;
+  if (status === "budgetLimited") {
+    return "limited by budget";
+  }
+  return status;
 }
 
 function commandHint(status: GoalStatus): string {
   if (status === "active") {
     return "/goal copy, /goal pause, /goal clear";
   }
-  if (status === "paused") {
+  if (status === "paused" || status === "blocked") {
     return "/goal copy, /goal resume, /goal clear";
   }
   if (status === "complete") {
@@ -165,6 +168,10 @@ export function formatFooterStatus(
 
   if (goal.status === "paused") {
     return "Goal paused (/goal resume)";
+  }
+
+  if (goal.status === "blocked") {
+    return "Goal blocked (/goal resume)";
   }
 
   if (goal.tokenBudget !== null) {

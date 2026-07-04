@@ -115,6 +115,29 @@ const commandSetTable: CommandSetTableCase[] = [
     before: ["clearBudgetWarning"],
     after: ["markContinuationQueued", "resetRecovery"],
   },
+  {
+    label: "active to same blocked",
+    build: () => {
+      const goal = createThreadGoal("ship it");
+      const blocked = { ...cloneGoal(goal), status: "blocked" as const };
+      return { current: goal, next: blocked };
+    },
+    persist: "set",
+    before: ["clearContinuation", "clearActiveAccounting", "clearBudgetWarning"],
+    after: [],
+  },
+  {
+    label: "blocked to same active",
+    build: () => {
+      const goal = createThreadGoal("ship it");
+      const blocked = { ...cloneGoal(goal), status: "blocked" as const };
+      const active = { ...cloneGoal(goal), status: "active" as const };
+      return { current: blocked, next: active };
+    },
+    persist: "set",
+    before: ["clearBudgetWarning"],
+    after: ["markContinuationQueued", "resetRecovery"],
+  },
 ];
 
 for (const tableCase of commandSetTable) {
@@ -339,11 +362,26 @@ test("abort_pause rejects non-active current", () => {
   );
 });
 
-test("resume_active rejects non-paused current", () => {
+test("resume_active derives active goal from blocked current", () => {
+  withUnixTime(100, () => {
+    const current = { ...createThreadGoal("ship it", 10), status: "blocked" as const };
+    const plan = planGoalTransition(current, { kind: "resume_active" });
+
+    assertDisjointPrimitivePlan(plan, "resume blocked");
+    assert.equal(plan.persist, "set");
+    assert.equal(plan.nextGoal.status, "active");
+    assert.equal(plan.nextGoal.goalId, current.goalId);
+    assert.equal(plan.nextGoal.updatedAt, 100);
+    assert.deepEqual(effectTypes(plan.beforePersist), ["clearContinuation", "resetRecovery", "clearBudgetWarning"]);
+    assert.deepEqual(plan.afterPersist, []);
+  });
+});
+
+test("resume_active rejects non-paused or non-blocked current", () => {
   const active = createThreadGoal("ship it");
   assert.throws(
     () => planGoalTransition(active, { kind: "resume_active" }),
-    /Invalid resume_active transition: current status must be paused/,
+    /Invalid resume_active transition: current status must be paused or blocked/,
   );
 });
 

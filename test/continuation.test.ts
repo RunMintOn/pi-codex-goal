@@ -278,6 +278,22 @@ test("goal tools return Codex-shaped response details", async () => {
   assert.match(String(completed.details.completionBudgetReport), /^Goal achieved\. Report final budget usage to the user:/);
 });
 
+test("update_goal blocked marks the current goal blocked without a completion budget report", async () => {
+  const harness = createRuntimeHarness();
+  await harness.runTool("create_goal", {
+    objective: "ship it",
+    token_budget: 20,
+  });
+
+  const blocked = (await harness.runTool("update_goal", { status: "blocked" })) as {
+    details: Record<string, unknown>;
+  };
+
+  assert.equal((blocked.details.goal as { status?: string }).status, "blocked");
+  assert.equal(blocked.details.completionBudgetReport, null);
+  assert.equal(harness.snapshot().goal?.status, "blocked");
+});
+
 test("agent end waits for idle before continuing active goals", async () => {
   mock.timers.enable({ apis: ["setTimeout"] });
   try {

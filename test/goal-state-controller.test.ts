@@ -104,6 +104,20 @@ test("goal snapshots are cloned at persistence and controller boundaries", () =>
   assert.equal(harness.persistence.getGoal()?.usage.activeSeconds, 2);
 });
 
+test("blockGoal persists a blocked goal snapshot", () => {
+  const harness = createStateControllerTestHarness(activeGoal);
+
+  const result = harness.stateController.blockGoal("tool", harness.ctx);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.goal?.status, "blocked");
+  assert.equal(harness.stateController.getGoal()?.status, "blocked");
+  assert.equal(harness.entries.length, 1);
+  const entry = harness.entries[0] as { kind?: string; goal?: ThreadGoal };
+  assert.equal(entry.kind, "set");
+  assert.equal(entry.goal?.status, "blocked");
+});
+
 test("beginOverflowRecovery without an active goal records user reset only", () => {
   const harness = createStateControllerTestHarness(null);
 

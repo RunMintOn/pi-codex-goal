@@ -204,13 +204,17 @@ test("formatters produce Codex-style compact summaries", () => {
   const active = created;
   const paused = updateGoalStatus(active, "paused").goal;
   const budgetLimited = applyUsage(active, 10, 0).goal;
+  const blocked = updateGoalStatus(active, "blocked").goal;
   const complete = updateGoalStatus(active, "complete").goal;
   assert.ok(paused);
   assert.ok(budgetLimited);
+  assert.ok(blocked);
   assert.ok(complete);
-  for (const goal of [active, paused, budgetLimited, complete]) {
+  for (const goal of [active, paused, budgetLimited, blocked, complete]) {
     assert.match(formatGoalSummary(goal), /Hint: .*\/goal copy/);
   }
+  assert.match(formatGoalSummary(blocked), /Hint: .*\/goal resume/);
+  assert.equal(formatFooterStatus(blocked), "Goal blocked (/goal resume)");
 });
 
 test("token formatting uses commas and compact abbreviations", () => {
@@ -258,7 +262,7 @@ test("updateGoalStatus rejects pause and resume on completed goals", () => {
   assert.equal(updateGoalStatus(completed, "active").ok, false);
 });
 
-test("updateGoalStatus only allows pause from active and resume from paused", () => {
+test("updateGoalStatus only allows pause from active and resume from paused or blocked", () => {
   const created = createGoal(null, "finish").goal;
   assert.ok(created);
 
@@ -274,6 +278,15 @@ test("updateGoalStatus only allows pause from active and resume from paused", ()
   assert.equal(resumed.status, "active");
 
   assert.equal(updateGoalStatus(resumed, "active").ok, false);
+
+  const blocked = updateGoalStatus(created, "blocked").goal;
+  assert.ok(blocked);
+  assert.equal(blocked.status, "blocked");
+  assert.equal(updateGoalStatus(blocked, "paused").ok, false);
+
+  const resumedBlocked = updateGoalStatus(blocked, "active").goal;
+  assert.ok(resumedBlocked);
+  assert.equal(resumedBlocked.status, "active");
 });
 
 test("createGoal replaces completed goals and rejects non-complete duplicates", () => {
@@ -290,6 +303,11 @@ test("createGoal replaces completed goals and rejects non-complete duplicates", 
   assert.ok(paused);
   assert.equal(createGoal(paused, "next").ok, false);
   assert.match(createGoal(paused, "next").message ?? "", /non-complete goal/);
+
+  const blocked = updateGoalStatus(created, "blocked").goal;
+  assert.ok(blocked);
+  assert.equal(createGoal(blocked, "next").ok, false);
+  assert.match(createGoal(blocked, "next").message ?? "", /non-complete goal/);
 
   const limited = applyUsage(createGoal(null, "finish", 10).goal!, 10, 0).goal;
   assert.ok(limited);
@@ -323,6 +341,7 @@ test("budget-limited goals cannot be paused or resumed back to active while over
 
   assert.equal(updateGoalStatus(limited, "paused").goal?.status, "budgetLimited");
   assert.equal(updateGoalStatus(limited, "active").goal?.status, "budgetLimited");
+  assert.equal(updateGoalStatus(limited, "blocked").goal?.status, "budgetLimited");
 });
 
 test("hidden prompts XML-escape untrusted goal objectives", () => {

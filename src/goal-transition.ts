@@ -84,6 +84,9 @@ function memoryEffectsFromGoalChange(
   } else if (next.status === "paused") {
     appendGoalTransitionEffectOnce(effects, { type: "clearContinuation" });
     appendGoalTransitionEffectOnce(effects, { type: "clearActiveAccounting" });
+  } else if (next.status === "blocked") {
+    appendGoalTransitionEffectOnce(effects, { type: "clearContinuation" });
+    appendGoalTransitionEffectOnce(effects, { type: "clearActiveAccounting" });
   } else if (next.status === "budgetLimited") {
     appendGoalTransitionEffectOnce(effects, { type: "clearContinuation" });
     appendGoalTransitionEffectOnce(effects, { type: "clearActiveAccounting" });
@@ -249,7 +252,9 @@ function planDerivedResumeActiveTransition(
 ): GoalTransitionPlan {
   const kind = "resume_active";
   requireCurrentGoal(current, kind);
-  requireStatus(current, "paused", kind);
+  if (current.status !== "paused" && current.status !== "blocked") {
+    throw transitionInvariantError(kind, `current status must be paused or blocked (got ${current.status})`);
+  }
   const nextGoal = deriveGoalWithStatus(current, "active");
 
   return {
@@ -371,7 +376,7 @@ export function planGoalTransition(
 
     case "set": {
       const { nextGoal, source } = request;
-      const wasPausedBefore = current?.status === "paused";
+      const wasPausedBefore = current?.status === "paused" || current?.status === "blocked";
       const afterPersist =
         source === "command"
           ? commandAfterPersistEffects(current, nextGoal, wasPausedBefore)

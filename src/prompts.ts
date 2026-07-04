@@ -3,13 +3,10 @@ import type { ThreadGoal } from "./types.js";
 
 const CONTINUATION_MARKER_PREFIX = "<pi_goal_continuation goal_id=\"";
 
-export const GOAL_TOOL_NAME_GUIDANCE =
-  "Call each goal tool by the name exposed in your available tool list. In pi that is usually get_goal, create_goal, and update_goal; in bridged MCP runs it may be a namespaced variant such as pi__get_goal, pi__create_goal, or pi__update_goal. Do not assume display, history, or transcript tool names are callable unless they appear in your tool list.";
-
 type GoalToolName = "get_goal" | "create_goal" | "update_goal";
 
 export function goalToolReference(toolName: GoalToolName): string {
-  return `${toolName} (or the exposed namespaced equivalent, such as pi__${toolName})`;
+  return toolName;
 }
 
 const UPDATE_GOAL_REF_PLACEHOLDER = "{update_goal_ref}";
@@ -18,6 +15,7 @@ const COMPLETION_AUDIT_TOOL_GUIDELINE_TEMPLATES = [
   `Use ${UPDATE_GOAL_REF_PLACEHOLDER} with status complete only after a completion audit proves the objective is actually achieved and no required work remains.`,
   `Before using ${UPDATE_GOAL_REF_PLACEHOLDER}, map every explicit requirement in the goal to concrete evidence from files, command output, test results, PR state, or other real artifacts; uncertainty means the goal is not complete.`,
   `Do not use ${UPDATE_GOAL_REF_PLACEHOLDER} merely because work is stopping, substantial progress was made, tests passed without covering every requirement, or the token budget is nearly exhausted.`,
+  `Use ${UPDATE_GOAL_REF_PLACEHOLDER} with status blocked only when a real blocker prevents completing the objective now; do not use blocked for ordinary uncertainty, low budget, or because you are stopping work.`,
 ];
 
 const COMPLETION_AUDIT_CHECKLIST_LINES = [
@@ -48,13 +46,12 @@ export function completionAuditContinuationPromptSection(): string[] {
     ),
     "",
     renderUpdateGoalTemplate(
-      `Do not call ${UPDATE_GOAL_REF_PLACEHOLDER} unless the goal is complete. Do not mark a goal complete merely because the budget is nearly exhausted or because you are stopping work.`,
+      `Do not call ${UPDATE_GOAL_REF_PLACEHOLDER} with status "complete" unless the goal is complete. Do not mark a goal complete merely because the budget is nearly exhausted or because you are stopping work. If the objective is not complete but a real blocker prevents progress now, use status "blocked" instead.`,
     ),
   ];
 }
 
 export const TOOL_PROMPT_GUIDELINES = [
-  GOAL_TOOL_NAME_GUIDANCE,
   `Use ${goalToolReference("get_goal")} when you need to inspect the current long-running user objective.`,
   `Use ${goalToolReference("create_goal")} only when the user explicitly asks you to start tracking a concrete goal; do not infer goals from ordinary tasks and do not create a second goal while a non-complete goal already exists. After a goal is complete, ${goalToolReference("create_goal")} replaces it with a new active goal.`,
   ...completionAuditToolGuidelines(),
@@ -124,7 +121,7 @@ export function compactContinuationPrompt(goal: ThreadGoal): string {
     "Avoid repeating work that is already done. Choose the next concrete action toward the objective.",
     "",
     `Before marking the goal complete, audit progress against the objective and call ${goalToolReference("update_goal")} with status \"complete\" only when every requirement is verified.`,
-    GOAL_TOOL_NAME_GUIDANCE,
+    `If a real blocker prevents completing the objective now, call ${goalToolReference("update_goal")} with status \"blocked\" instead of marking complete.`,
     "</pi_goal_continuation>",
   ].join("\n");
 }
@@ -146,7 +143,6 @@ export function continuationPrompt(goal: ThreadGoal): string {
     "",
     ...completionAuditContinuationPromptSection(),
     "",
-    GOAL_TOOL_NAME_GUIDANCE,
     "</pi_goal_continuation>",
   ].join("\n");
 }
@@ -165,8 +161,6 @@ export function budgetLimitPrompt(goal: ThreadGoal): string {
     "",
     "The system has marked the goal as budgetLimited, so do not start new substantive work for this goal. Wrap up this turn soon: summarize useful progress, identify remaining work or blockers, and leave the user with a clear next step.",
     "",
-    `Do not call ${goalToolReference("update_goal")} unless the goal is actually complete.`,
-    "",
-    GOAL_TOOL_NAME_GUIDANCE,
+    `Do not call ${goalToolReference("update_goal")} with status \"complete\" unless the goal is actually complete.`,
   ].join("\n");
 }

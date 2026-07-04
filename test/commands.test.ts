@@ -280,7 +280,24 @@ test("/goal resume rejects completed and ordinarily active goals", async () => {
 
   await handleGoalCommand(harness.pi, harness.host, "resume", harness.ctx);
   assert.equal(harness.goal?.status, "active");
-  assert.match(harness.notifications.at(-1) ?? "", /Only paused goals can be resumed/);
+  assert.match(harness.notifications.at(-1) ?? "", /Only paused or blocked goals can be resumed/);
+});
+
+test("/goal resume sends a user continuation turn for blocked goals", async () => {
+  const harness = createHarness();
+
+  await handleGoalCommand(harness.pi, harness.host, "ship the feature", harness.ctx);
+  const blocked = updateGoalStatus(harness.goal, "blocked").goal;
+  assert.ok(blocked);
+  harness.sentMessages.length = 0;
+  harness.setGoal(blocked);
+
+  await handleGoalCommand(harness.pi, harness.host, "resume", harness.ctx);
+
+  assert.equal(harness.goal?.status, "active");
+  assert.equal(harness.sentMessages.length, 0);
+  assert.equal(harness.sentUserMessages.length, 1);
+  assert.match(harness.notifications.at(-1) ?? "", /Goal marked active/);
 });
 
 test("/goal resume restarts an active goal waiting for user-start overflow recovery", async () => {

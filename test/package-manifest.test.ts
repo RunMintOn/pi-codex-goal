@@ -10,11 +10,11 @@ const EXPECTED_CREATE_GOAL_COMPLETION_AUDIT_BLOCK = [
 ].join("\n");
 
 function frontmatter(prompt: string): Record<string, string> {
-  const match = /^---\n(?<body>[\s\S]*?)\n---\n/.exec(prompt);
+  const match = /^---\r?\n(?<body>[\s\S]*?)\r?\n---\r?\n/.exec(prompt);
   assert.ok(match?.groups?.body, "prompt has frontmatter");
 
   return Object.fromEntries(
-    match.groups.body.split("\n").map((line) => {
+    match.groups.body.split(/\r?\n/).map((line) => {
       const separator = line.indexOf(":");
       assert.notEqual(separator, -1, `frontmatter line has key/value: ${line}`);
       return [line.slice(0, separator), line.slice(separator + 1).trim()];
@@ -41,5 +41,5 @@ test("create-goal prompt keeps package frontmatter and expected completion-audit
   assert.match(prompt, /Turn the user task into exactly one durable pi-codex-goal objective/);
   assert.match(prompt, /pass `replace_existing: true`/);
   assert.match(prompt, /Do not set a token budget limit unless the user explicitly provides a budget\/limit/);
-  assert.ok(prompt.includes(EXPECTED_CREATE_GOAL_COMPLETION_AUDIT_BLOCK));
+  assert.ok(prompt.replaceAll("\r\n", "\n").includes(EXPECTED_CREATE_GOAL_COMPLETION_AUDIT_BLOCK));
 });

@@ -194,7 +194,7 @@ export function isThreadGoal(goal: unknown): goal is ThreadGoal {
 }
 
 export function isGoalStatus(status: unknown): status is GoalStatus {
-  return status === "active" || status === "paused" || status === "budgetLimited" || status === "complete";
+  return status === "active" || status === "paused" || status === "blocked" || status === "budgetLimited" || status === "complete";
 }
 
 function canApplyRuntimeUsageEntry(goal: ThreadGoal | null, entry: Extract<GoalCustomEntry, { kind: "usage" }>): goal is ThreadGoal {
@@ -345,6 +345,14 @@ export function updateGoalStatus(current: ThreadGoal | null, status: GoalStatus)
     };
   }
 
+  if (status === "blocked" && current.status !== "active") {
+    return {
+      ok: false,
+      message: "Only active goals can be marked blocked.",
+      goal: current,
+    };
+  }
+
   if (status === "paused" && current.status !== "active") {
     return {
       ok: false,
@@ -353,16 +361,16 @@ export function updateGoalStatus(current: ThreadGoal | null, status: GoalStatus)
     };
   }
 
-  if (status === "active" && current.status !== "paused") {
+  if (status === "active" && current.status !== "paused" && current.status !== "blocked") {
     return {
       ok: false,
-      message: "Only paused goals can be resumed.",
+      message: "Only paused or blocked goals can be resumed.",
       goal: current,
     };
   }
 
   const goal = cloneGoal(current);
-  if (current.status === "budgetLimited" && (status === "active" || status === "paused")) {
+  if (current.status === "budgetLimited" && (status === "active" || status === "paused" || status === "blocked")) {
     goal.status = "budgetLimited";
   } else {
     goal.status = statusAfterBudgetLimit(status, goal.usage.tokensUsed, goal.tokenBudget);
