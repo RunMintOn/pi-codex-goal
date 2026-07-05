@@ -1,16 +1,16 @@
 {
   "name": "pi-codex-goal",
-  "version": "0.1.33",
-  "description": "Codex-style goal tracking and continuation for pi.",
+  "version": "0.2.0",
+  "description": "Codex-style goal tracking for pi, with blocked state and aligned continuation prompts.",
   "type": "module",
-  "author": "Mitch Fultz (https://github.com/fitchmultz)",
+  "author": "RunMintOn (https://github.com/RunMintOn)",
   "license": "MIT",
   "main": "src/index.ts",
   "files": [
     "src",
     "docs",
     "scripts",
-    "AGENTS.md",
+    "archive",
     "prompts",
     "platform-smoke.config.mjs",
     ".crabboxignore",
@@ -28,12 +28,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fitchmultz/pi-codex-goal.git"
+    "url": "git+https://github.com/RunMintOn/pi-codex-goal.git"
   },
   "bugs": {
-    "url": "https://github.com/fitchmultz/pi-codex-goal/issues"
+    "url": "https://github.com/RunMintOn/pi-codex-goal/issues"
   },
-  "homepage": "https://github.com/fitchmultz/pi-codex-goal#readme",
+  "homepage": "https://github.com/RunMintOn/pi-codex-goal#readme",
   "pi": {
     "extensions": [
       "./src/index.ts"
