@@ -1,5 +1,5 @@
 {
-  "name": "@RunMintOn/pi-codex-goal",
+  "name": "@runminton/pi-codex-goal",
   "version": "0.2.0",
   "description": "Codex-style goal tracking for pi, with blocked state and aligned continuation prompts.",
   "type": "module",
