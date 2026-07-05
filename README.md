@@ -10,6 +10,29 @@ This package adds a `/goal` command plus three model-callable tools:
 
 Goal state is stored in pi session custom entries, so it follows session history, resume, fork, tree navigation, reload, and compaction behavior without an external database.
 
+## What's different in this fork
+
+Compared to the original `fitchmultz/pi-codex-goal`, this fork makes the following changes:
+
+**Blocked goal support**
+- New `"blocked"` goal status. `update_goal` now accepts `status: "blocked"` alongside `"complete"`.
+- State machine supports `active → blocked` and `blocked → active` (via `/goal resume`).
+- Blocked goals stop auto-continuation and display `"Goal blocked (/goal resume)"` in the footer.
+- The full Codex blocked audit is enforced through prompts: do not use "blocked" the first time a blocker appears; only after the same blocking condition repeats for at least three consecutive goal turns. A resumed goal starts a fresh blocked audit.
+
+**Cleaner tool definitions**
+- Removed "Codex-style" from all tool `description` fields.
+- Removed the MCP/namespaced prompt guidance (`GOAL_TOOL_NAME_GUIDANCE`) that mentioned `pi__get_goal`, `pi__create_goal`, `pi__update_goal`, and "bridged MCP". Tool names are now referenced directly.
+
+**Continuation prompt aligned with Codex**
+- Added `Continuation behavior` section: goals persist across turns, do not shrink the objective, rough edges are acceptable mid-work.
+- Added `Work from evidence` section: current worktree is authoritative, inspect before relying on memory.
+- Added `Fidelity` section: optimize for the real end state, do not substitute easier solutions.
+- Added strict `Blocked audit` section (7 bullet points) replacing the previous single-line blocked reminder.
+- All prompt text uses consistent terminology: "blocking condition", "at an impasse", "consecutive goal turns", "fresh blocked audit".
+
+Design analysis documents (Chinese, with English index) are available in [`docs/analysis/`](docs/analysis/).
+
 ## Install
 
 Install from npm:
