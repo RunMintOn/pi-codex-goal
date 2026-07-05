@@ -22,6 +22,8 @@ test("tool prompt guidelines use direct Pi goal tool names", () => {
   assert.match(combined, /Use create_goal only when/);
   assert.match(combined, /Use update_goal with status complete/);
   assert.match(combined, /Use update_goal with status blocked/);
+  assert.match(combined, /three consecutive goal turns/);
+  assert.match(combined, /fresh blocked audit/);
   assert.doesNotMatch(combined, /pi__/);
   assert.doesNotMatch(combined, /namespaced equivalent/);
   for (const guideline of completionAuditToolGuidelines()) {
@@ -34,10 +36,23 @@ test("continuation prompt uses the canonical completion-audit contract", () => {
   assert.ok(created);
 
   const continuation = continuationPrompt(created);
+  assert.match(continuation, /Continuation behavior:/);
+  assert.match(continuation, /This goal persists across turns/);
+  assert.match(continuation, /Work from evidence:/);
+  assert.match(continuation, /current worktree and external state as authoritative/);
+  assert.match(continuation, /Fidelity:/);
+  assert.match(continuation, /Do not substitute a narrower, safer, smaller/);
+  assert.match(continuation, /An edit is aligned only if it makes the requested final state more true/);
   assert.match(continuation, /Before deciding that the goal is achieved, perform a completion audit/);
   assert.match(continuation, /prompt-to-artifact checklist/);
   assert.match(continuation, /Do not accept proxy signals as completion by themselves/);
   assert.match(continuation, /Do not mark a goal complete merely because the budget is nearly exhausted/);
+  assert.match(continuation, /Blocked audit:/);
+  assert.match(continuation, /three consecutive goal turns/);
+  assert.match(continuation, /fresh blocked audit/);
+  assert.match(continuation, /truly at an impasse/);
+  assert.doesNotMatch(continuation, /update_plan/);
+  assert.doesNotMatch(continuation, /real blocker prevents progress now/);
   assert.ok(continuation.includes(completionAuditContinuationPromptSection().join("\n")));
 });
 
@@ -52,6 +67,9 @@ test("compact continuation keeps marker detection without repeating the full obj
   assert.match(compact, /<pi_goal_continuation goal_id="/);
   assert.doesNotMatch(compact, /<untrusted_objective>/);
   assert.match(compact, /get_goal/);
+  assert.match(compact, /Blocked audit:/);
+  assert.match(compact, /three consecutive goal turns/);
+  assert.match(compact, /fresh blocked audit/);
   assert.ok(compact.length < full.length);
 });
 

@@ -30,7 +30,7 @@ const CreateGoalParams = Type.Object({
 const UpdateGoalParams = Type.Object({
   status: StringEnum(["complete", "blocked"] as const, {
     description:
-      "Set to complete only when the objective is achieved and no required work remains. Set to blocked only when a real blocker prevents completing the objective now.",
+      "Set to complete only when the objective is achieved and no required work remains. Set to blocked only after the same blocking condition has repeated for at least three consecutive goal turns and the agent is at an impasse. After a previously blocked goal is resumed, the resumed run starts a fresh blocked audit.",
   }),
 });
 
@@ -96,9 +96,9 @@ export function registerGoalTools(pi: ExtensionAPI, host: ToolHost): void {
     name: "update_goal",
     label: "Update Goal",
     description:
-      "Mark the current goal complete only after the objective is actually achieved, or blocked only when a real blocker prevents completing it now. Do not use this tool just because work is stopping, budget is low, or partial progress looks sufficient.",
+      "Update the existing goal. Use this tool only to mark the goal achieved or genuinely blocked. Set status to complete only when the objective has actually been achieved and no required work remains. Set status to blocked only when the same blocking condition has repeated for at least three consecutive goal turns and the agent cannot make meaningful progress without user input or an external-state change. After a previously blocked goal is resumed, the resumed run starts a fresh blocked audit.",
     promptSnippet:
-      "Mark the current goal complete only after an evidence-backed completion audit proves no required work remains, or blocked only when a real blocker prevents completion now.",
+      "Mark the current goal complete only after an evidence-backed completion audit proves no required work remains, or blocked only after the strict blocked audit is satisfied.",
     promptGuidelines: TOOL_PROMPT_GUIDELINES,
     parameters: UpdateGoalParams,
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {

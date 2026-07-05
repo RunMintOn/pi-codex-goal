@@ -15,7 +15,7 @@ const COMPLETION_AUDIT_TOOL_GUIDELINE_TEMPLATES = [
   `Use ${UPDATE_GOAL_REF_PLACEHOLDER} with status complete only after a completion audit proves the objective is actually achieved and no required work remains.`,
   `Before using ${UPDATE_GOAL_REF_PLACEHOLDER}, map every explicit requirement in the goal to concrete evidence from files, command output, test results, PR state, or other real artifacts; uncertainty means the goal is not complete.`,
   `Do not use ${UPDATE_GOAL_REF_PLACEHOLDER} merely because work is stopping, substantial progress was made, tests passed without covering every requirement, or the token budget is nearly exhausted.`,
-  `Use ${UPDATE_GOAL_REF_PLACEHOLDER} with status blocked only when a real blocker prevents completing the objective now; do not use blocked for ordinary uncertainty, low budget, or because you are stopping work.`,
+  `Use ${UPDATE_GOAL_REF_PLACEHOLDER} with status blocked only after the same blocking condition has repeated for at least three consecutive goal turns and you are at an impasse; after a blocked goal is resumed, start a fresh blocked audit.`,
 ];
 
 const COMPLETION_AUDIT_CHECKLIST_LINES = [
@@ -46,8 +46,47 @@ export function completionAuditContinuationPromptSection(): string[] {
     ),
     "",
     renderUpdateGoalTemplate(
-      `Do not call ${UPDATE_GOAL_REF_PLACEHOLDER} with status "complete" unless the goal is complete. Do not mark a goal complete merely because the budget is nearly exhausted or because you are stopping work. If the objective is not complete but a real blocker prevents progress now, use status "blocked" instead.`,
+      `Do not call ${UPDATE_GOAL_REF_PLACEHOLDER} with status "complete" unless the goal is complete. Do not mark a goal complete merely because the budget is nearly exhausted or because you are stopping work.`,
     ),
+  ];
+}
+
+function continuationBehaviorPromptSection(): string[] {
+  return [
+    "Continuation behavior:",
+    "- This goal persists across turns. Ending this turn does not require shrinking the objective to what fits now.",
+    "- Keep the full objective intact. If it cannot be finished now, make concrete progress toward the real requested end state, leave the goal active, and do not redefine success around a smaller or easier task.",
+    "- Temporary rough edges are acceptable while the work is moving in the right direction. Completion still requires the requested end state to be true and verified.",
+  ];
+}
+
+function workFromEvidencePromptSection(): string[] {
+  return [
+    "Work from evidence:",
+    "Use the current worktree and external state as authoritative. Previous conversation context can help locate relevant work, but inspect the current state before relying on it. Improve, replace, or remove existing work as needed to satisfy the actual objective.",
+  ];
+}
+
+function fidelityPromptSection(): string[] {
+  return [
+    "Fidelity:",
+    "- Optimize each turn for movement toward the requested end state, not for the smallest stable-looking subset or easiest passing change.",
+    "- Do not substitute a narrower, safer, smaller, merely compatible, or easier-to-test solution because it is more likely to pass current tests.",
+    "- Treat alignment as movement toward the requested end state. An edit is aligned only if it makes the requested final state more true; useful-looking behavior that preserves a different end state is misaligned.",
+  ];
+}
+
+function blockedAuditContinuationPromptSection(): string[] {
+  return [
+    "Blocked audit:",
+    `- Do not call ${goalToolReference("update_goal")} with status "blocked" the first time a blocker appears.`,
+    `- Only use status "blocked" when the same blocking condition has repeated for at least three consecutive goal turns, counting the original/user-triggered turn and any automatic goal continuations.`,
+    `- If the user resumes a goal that was previously marked "blocked", treat the resumed run as a fresh blocked audit. If the same blocking condition then repeats for at least three consecutive resumed goal turns, call ${goalToolReference("update_goal")} with status "blocked" again.`,
+    `- Use status "blocked" only when you are truly at an impasse and cannot make meaningful progress without user input or an external-state change.`,
+    `- Once the blocked threshold is satisfied, do not keep reporting that you are still blocked while leaving the goal active; call ${goalToolReference("update_goal")} with status "blocked".`,
+    `- Never use status "blocked" merely because the work is hard, slow, uncertain, incomplete, or would benefit from clarification.`,
+    "",
+    `Do not call ${goalToolReference("update_goal")} unless the goal is complete or the strict blocked audit above is satisfied. Do not mark a goal complete merely because the budget is nearly exhausted or because you are stopping work.`,
   ];
 }
 
@@ -121,7 +160,7 @@ export function compactContinuationPrompt(goal: ThreadGoal): string {
     "Avoid repeating work that is already done. Choose the next concrete action toward the objective.",
     "",
     `Before marking the goal complete, audit progress against the objective and call ${goalToolReference("update_goal")} with status \"complete\" only when every requirement is verified.`,
-    `If a real blocker prevents completing the objective now, call ${goalToolReference("update_goal")} with status \"blocked\" instead of marking complete.`,
+    `Blocked audit: do not use status "blocked" the first time a blocker appears. Only use status "blocked" when the same blocking condition repeats for at least three consecutive goal turns. A resumed goal starts a fresh blocked audit.`,
     "</pi_goal_continuation>",
   ].join("\n");
 }
@@ -137,11 +176,19 @@ export function continuationPrompt(goal: ThreadGoal): string {
     escapeXmlText(goal.objective),
     "</untrusted_objective>",
     "",
+    ...continuationBehaviorPromptSection(),
+    "",
     ...budgetPromptLines(goal, true),
+    "",
+    ...workFromEvidencePromptSection(),
+    "",
+    ...fidelityPromptSection(),
     "",
     "Avoid repeating work that is already done. Choose the next concrete action toward the objective.",
     "",
     ...completionAuditContinuationPromptSection(),
+    "",
+    ...blockedAuditContinuationPromptSection(),
     "",
     "</pi_goal_continuation>",
   ].join("\n");
