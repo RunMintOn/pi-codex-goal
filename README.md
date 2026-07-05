@@ -173,11 +173,11 @@ This intentionally matches Codex TUI behavior: token budgets are set through the
 
 `get_goal` returns the current goal state and usage.
 
-`update_goal` only accepts `status: "complete"`, matching Codex's model-side contract. Calling it on an already-complete goal is idempotent and does not append duplicate session entries. The extension reports final token and elapsed-time usage before marking the goal complete.
+`update_goal` accepts `status: "complete"` or `status: "blocked"`. Use `"complete"` only when the objective is achieved and no required work remains. Use `"blocked"` only when a real blocker prevents completing the objective now. Calling it on an already-complete goal is idempotent and does not append duplicate session entries. The extension reports final token and elapsed-time usage before marking the goal complete.
 
 Completed goals are terminal for automatic transitions: pause, resume, and hidden continuations do not reopen them. To recover from premature completion, use `/goal <objective>` to replace the goal, call `create_goal` with `replace_existing: true`, or `/goal clear` before starting again.
 
-In bridged MCP environments, pi may expose these tools under namespaced MCP names like `pi__get_goal`, `pi__create_goal`, and `pi__update_goal`. Prompt guidance tells models to call whichever goal-tool name is actually exposed in the current run, not display or transcript labels.
+Blocked goals stop automatic continuation and display `"Goal blocked (/goal resume)"` in the footer. Use `/goal resume` to reactivate a blocked goal.
 
 ## Behavior
 
@@ -189,10 +189,11 @@ While a goal is active, the extension:
 - pauses when an active assistant turn is aborted, such as when you press Esc
 - recovers from provider assistant errors without immediate hidden continuation loops: context-window overflow triggers automatic compaction and then resumes the active goal, transient errors use bounded backoff retries, and recognized provider usage-limit pauses schedule a conservative auto-resume retry; use `/goal resume cancel` to stop the scheduled retry
 - prompts on session resume before reactivating a paused goal, and resumes explicitly with `/goal resume` from paused goals
-- rejects `/goal pause` unless the goal is active and rejects `/goal resume` unless the goal is paused, except when an active goal is waiting for a user-start recovery turn after host overflow recovery; in that recovery state, `/goal resume` sends the required user follow-up instead of changing goal status
+- rejects `/goal pause` unless the goal is active and rejects `/goal resume` unless the goal is paused or blocked, except when an active goal is waiting for a user-start recovery turn after host overflow recovery; in that recovery state, `/goal resume` sends the required user follow-up instead of changing goal status
 - treats completed goals as terminal for automatic transitions while allowing `/goal <objective>` and explicit `create_goal` replacement to replace goals without extra friction
-- marks the goal `budgetLimited` when a positive token budget is reached
+- marks the goal `budgetLimited` when a positive token budget is reached, and rejects `update_goal(status: "blocked")` while budget-limited
 - sends hidden steering messages when budget is reached or when the agent is idle but the goal is still active
+- marks `blocked` when the model calls `update_goal(status: "blocked")` on an active goal; blocked goals stop automatic continuation, can be resumed with `/goal resume`, and can be replaced with `/goal <objective>`
 - compacts repeated hidden goal continuations before provider context so only the latest active continuation stays runnable, older ones become short bookkeeping markers, and auto-queued continuations use a compact prompt after `/goal` start or resume
 - shows Codex-style status labels with compact token or elapsed-time usage in the pi footer when UI is available
 
