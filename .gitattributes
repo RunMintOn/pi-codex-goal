@@ -1,0 +1,2 @@
+# Keep repository text files normalized to LF across Windows and Unix hosts.
+* text=auto
